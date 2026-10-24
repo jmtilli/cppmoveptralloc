@@ -28,5 +28,15 @@ int main(int argc, char **argv)
   Traits::construct(dblalloc, d, 1.5);
   Traits::destroy(dblalloc, d);
   Traits::deallocate(dblalloc, d, 1);
+
+  d = Traits::allocate(dblalloc, 3);
+  Traits::construct(dblalloc, &d[0], 2.5);
+  Traits::construct(dblalloc, &d[1], 3.5);
+  Traits::construct(dblalloc, &d[2], 4.5);
+  Traits::destroy(dblalloc, &d[2]);
+  Traits::destroy(dblalloc, &d[1]);
+  Traits::destroy(dblalloc, &d[0]);
+  Traits::deallocate(dblalloc, d, 3);
+
   return 0;
 }
