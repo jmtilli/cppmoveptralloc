@@ -1,3 +1,6 @@
+// Author / copyright holder: Juha-Matti Tilli, 2026
+// License: MIT
+
 #ifndef _MOVEPTRALLOC_H_
 #define _MOVEPTRALLOC_H_
 
