@@ -1,12 +1,14 @@
 #include "moveptralloc.h"
 #include <vector>
 
+namespace mpa = jmtilli::mpa;
+
 int main(int argc, char **argv)
 {
-  std::shared_ptr<MovePtrAllocatorImpl> impl(new MovePtrAllocatorImpl(128*1024, 32*1024));
-  MovePtrTypeAllocator<double> dblalloc(impl);
-  using Traits = std::allocator_traits<MovePtrTypeAllocator<double> >;
-  std::vector<int, MovePtrTypeAllocator<int> > vec(impl);
+  auto impl = std::make_shared<mpa::MovePtrAllocatorImpl>(512*1024, 128*1024);
+  mpa::MovePtrTypeAllocator<double> dblalloc(impl);
+  using DblTraits = std::allocator_traits<mpa::MovePtrTypeAllocator<double> >;
+  std::vector<int, mpa::MovePtrTypeAllocator<int> > vec(impl);
   size_t i;
   double *d;
 
@@ -24,19 +26,19 @@ int main(int argc, char **argv)
   {
     vec.push_back(i);
   }
-  d = Traits::allocate(dblalloc, 1);
-  Traits::construct(dblalloc, d, 1.5);
-  Traits::destroy(dblalloc, d);
-  Traits::deallocate(dblalloc, d, 1);
+  d = DblTraits::allocate(dblalloc, 1);
+  DblTraits::construct(dblalloc, d, 1.5);
+  DblTraits::destroy(dblalloc, d);
+  DblTraits::deallocate(dblalloc, d, 1);
 
-  d = Traits::allocate(dblalloc, 3);
-  Traits::construct(dblalloc, &d[0], 2.5);
-  Traits::construct(dblalloc, &d[1], 3.5);
-  Traits::construct(dblalloc, &d[2], 4.5);
-  Traits::destroy(dblalloc, &d[2]);
-  Traits::destroy(dblalloc, &d[1]);
-  Traits::destroy(dblalloc, &d[0]);
-  Traits::deallocate(dblalloc, d, 3);
+  d = DblTraits::allocate(dblalloc, 3);
+  DblTraits::construct(dblalloc, &d[0], 2.5);
+  DblTraits::construct(dblalloc, &d[1], 3.5);
+  DblTraits::construct(dblalloc, &d[2], 4.5);
+  DblTraits::destroy(dblalloc, &d[2]);
+  DblTraits::destroy(dblalloc, &d[1]);
+  DblTraits::destroy(dblalloc, &d[0]);
+  DblTraits::deallocate(dblalloc, d, 3);
 
   return 0;
 }

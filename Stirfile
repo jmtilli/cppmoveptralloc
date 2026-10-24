@@ -1,0 +1,32 @@
+@toplevel
+@strict
+
+$CXX ?= @nil
+@if(@type($CXX) == @type(@nil))
+  $CXX = @strwordlist(@getenv("CXX"), "\t ")
+  @if($CXX[] == 0)
+    $CXX = ["c++"]
+  @endif
+@endif
+
+$CXXFLAGS ?= @nil
+@if(@type($CXXFLAGS) == @type(@nil))
+  $CXXFLAGS = @strwordlist(@getenv("CXXFLAGS"), "\t ")
+  @if($CXXFLAGS[] == 0)
+    $CXXFLAGS = ["-O3", "-Wall", "-std=c++11", "-pedantic", "-g"]
+  @endif
+@endif
+
+$(SRC) = ['test.cc']
+$(OBJ) = @sufsuball($(SRC), ".cc", ".o")
+$(DEP) = @sufsuball($(SRC), ".cc", ".d")
+
+@phonyrule: 'all': 'test'
+
+'test': $(OBJ)
+@	[@$(CXX), @$(CXXFLAGS), "-o", $@, @@suffilter($^, ".o"), @@suffilter($+, ".a")]
+
+@patrule: $(OBJ): '%.o' '%.d': '%.cc'
+@	[@$(CXX), @$(CXXFLAGS), "-c", "-MMD", "-MF", $* . ".d", "-o", $@, $<]
+
+@cdepincludes @autotarget @autophony @ignore $(DEP)

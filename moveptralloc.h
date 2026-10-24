@@ -7,6 +7,8 @@
 #include <memory>
 #include <stdexcept>
 
+namespace jmtilli { namespace mpa {
+
 struct MovePtrAllocatorImpl {
   private:
     MovePtrAllocatorImpl(const MovePtrAllocatorImpl&) = delete;
@@ -137,5 +139,7 @@ template <typename T, typename U>
 bool operator!=(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
   return !(a == b);
 }
+
+} }
 
 #endif
