@@ -4,8 +4,12 @@
 int main(int argc, char **argv)
 {
   std::shared_ptr<MovePtrAllocatorImpl> impl(new MovePtrAllocatorImpl(128*1024, 32*1024));
+  MovePtrTypeAllocator<double> dblalloc(impl);
+  using Traits = std::allocator_traits<MovePtrTypeAllocator<double> >;
   std::vector<int, MovePtrTypeAllocator<int> > vec(impl);
   size_t i;
+  double *d;
+
   vec.push_back(1);
   vec.push_back(2);
   vec.push_back(3);
@@ -20,5 +24,9 @@ int main(int argc, char **argv)
   {
     vec.push_back(i);
   }
+  d = Traits::allocate(dblalloc, 1);
+  Traits::construct(dblalloc, d, 1.5);
+  Traits::destroy(dblalloc, d);
+  Traits::deallocate(dblalloc, d, 1);
   return 0;
 }
