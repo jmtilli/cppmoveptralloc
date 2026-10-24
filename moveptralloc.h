@@ -49,9 +49,10 @@ struct MovePtrAllocatorImpl {
   public:
     char *cur_arena;
     std::size_t arena_sz;
+    std::size_t direct_alloc_threshold;
     std::size_t cur_arena_off;
 
-    MovePtrAllocatorImpl(std::size_t arena_sz): arena_sz(arena_sz)
+    MovePtrAllocatorImpl(std::size_t arena_sz, std::size_t direct_alloc_threshold): arena_sz(arena_sz), direct_alloc_threshold(direct_alloc_threshold)
     {
         char *null_arena = nullptr;
         cur_arena = new char[arena_sz];
@@ -80,7 +81,7 @@ struct MovePtrAllocatorImpl {
         {
             throw std::bad_alloc();
         }
-        if (sz + sizeof(char*) + align > arena_sz)
+        if (sz + sizeof(char*) + align > arena_sz || sz > direct_alloc_threshold)
         {
             // Uh-oh. Need a special arena for just this allocation.
             return special_path(sz, align);
