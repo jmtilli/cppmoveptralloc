@@ -107,6 +107,9 @@ struct MovePtrTypeAllocator {
     std::shared_ptr<MovePtrAllocatorImpl> impl;
   public:
     using value_type = T;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
 
     MovePtrTypeAllocator(std::shared_ptr<MovePtrAllocatorImpl> impl) noexcept: impl(impl) {}
 
