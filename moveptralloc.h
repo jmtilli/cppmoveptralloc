@@ -1,0 +1,137 @@
+#ifndef _MOVEPTRALLOC_H_
+#define _MOVEPTRALLOC_H_
+
+#include <cstdint>
+#include <cstddef>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+
+struct MovePtrAllocatorImpl {
+  private:
+    MovePtrAllocatorImpl(const MovePtrAllocatorImpl&) = delete;
+    MovePtrAllocatorImpl &operator=(const MovePtrAllocatorImpl&) = delete;
+
+    void new_arena(std::size_t align)
+    {
+        char *new_arena;
+        new_arena = new char[arena_sz];
+        std::memcpy(new_arena, &cur_arena, sizeof(cur_arena));
+        cur_arena = new_arena;
+        cur_arena_off = sizeof(cur_arena);
+        if (cur_arena_off & (align-1))
+        {
+            std::size_t tomove = align - (cur_arena_off&(align-1));
+            cur_arena_off += tomove;
+        }
+    }
+
+    void *special_path(std::size_t sz, std::size_t align)
+    {
+        size_t alloc_off;
+        size_t alloc_sz;
+        char *next_arena;
+        char *special_arena;
+        std::memcpy(&next_arena, cur_arena, sizeof(next_arena));
+        alloc_off = sizeof(next_arena);
+        if (alloc_off & (align-1))
+        {
+            alloc_off += align - (alloc_off&(align-1));
+        }
+        alloc_sz = alloc_off + sz;
+        special_arena = new char[alloc_sz];
+        // Insert it to the linked list
+        std::memcpy(special_arena, &next_arena, sizeof(next_arena));
+        std::memcpy(cur_arena, &special_arena, sizeof(special_arena));
+        return &special_arena[alloc_off];
+    }
+
+  public:
+    char *cur_arena;
+    std::size_t arena_sz;
+    std::size_t cur_arena_off;
+
+    MovePtrAllocatorImpl(std::size_t arena_sz): arena_sz(arena_sz)
+    {
+        char *null_arena = nullptr;
+        cur_arena = new char[arena_sz];
+        std::memcpy(cur_arena, &null_arena, sizeof(null_arena));
+        cur_arena_off = sizeof(null_arena);
+    }
+    ~MovePtrAllocatorImpl() noexcept
+    {
+        char *next_arena;
+        while (cur_arena)
+        {
+            std::memcpy(&next_arena, cur_arena, sizeof(next_arena));
+            delete[] cur_arena;
+            cur_arena = next_arena;
+        }
+    }
+
+    void *alloc(std::size_t sz, std::size_t align)
+    {
+        void *result;
+        if (align == 0 || (align&(align-1)) != 0 || align > SIZE_MAX-sizeof(char*))
+        {
+            throw std::invalid_argument("align not power of 2 or too big");
+        }
+        if (sz > SIZE_MAX - sizeof(char*) - align)
+        {
+            throw std::bad_alloc();
+        }
+        if (sz + sizeof(char*) + align > arena_sz)
+        {
+            // Uh-oh. Need a special arena for just this allocation.
+            return special_path(sz, align);
+        }
+        if (cur_arena_off & (align-1))
+        {
+            std::size_t tomove = align - (cur_arena_off&(align-1));
+            cur_arena_off += tomove;
+        }
+        if (cur_arena_off + sz > arena_sz)
+        {
+            new_arena(align);
+        }
+        result = cur_arena + cur_arena_off;
+        cur_arena_off += sz;
+        return result;
+    }
+};
+
+template <typename T>
+struct MovePtrTypeAllocator {
+  private:
+    std::shared_ptr<MovePtrAllocatorImpl> impl;
+  public:
+    using value_type = T;
+
+    MovePtrTypeAllocator(std::shared_ptr<MovePtrAllocatorImpl> impl) noexcept: impl(impl) {}
+
+    template <typename U>
+    constexpr MovePtrTypeAllocator(const MovePtrTypeAllocator<U> &other) noexcept: impl(other.impl) {}
+
+    T* allocate(std::size_t n) {
+        if (n > SIZE_MAX/sizeof(T))
+        {
+            throw std::bad_alloc();
+        }
+        void *ptr = impl->alloc(n*sizeof(T), alignof(T));
+        return static_cast<T*>(ptr);
+    }
+    void deallocate(T* p, std::size_t n) noexcept {
+        // nop
+    }
+};
+
+template <typename T, typename U>
+bool operator==(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
+  return a.impl.get() == b.impl.get();
+}
+template <typename T, typename U>
+bool operator!=(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
+  return !(a == b);
+}
+
+#endif
