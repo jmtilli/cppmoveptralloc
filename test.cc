@@ -7,9 +7,9 @@ int main(int argc, char **argv)
 {
   // same as std::make_shared<mpa::MovePtrAllocatorImpl>(..., ...);
   auto impl = mpa::make_impl(512*1024, 128*1024);
-  mpa::MovePtrTypeAllocator<double> dblalloc(impl);
-  using DblTraits = std::allocator_traits<mpa::MovePtrTypeAllocator<double> >;
-  std::vector<int, mpa::MovePtrTypeAllocator<int> > vec(impl);
+  mpa::TypeAlloc<double> dblalloc(impl);
+  using DblTraits = std::allocator_traits<mpa::TypeAlloc<double> >;
+  std::vector<int, mpa::TypeAlloc<int> > vec(impl);
   size_t i;
   double *d;
 
