@@ -132,6 +132,15 @@ struct MovePtrTypeAllocator {
     void deallocate(T* p, std::size_t n) noexcept {
         // nop
     }
+
+    template <typename U>
+    friend bool operator==(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
+        return a.impl.get() == b.impl.get();
+    }
+    template <typename U>
+    friend bool operator!=(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
+        return !(a == b);
+    }
 };
 
 std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
@@ -141,15 +150,6 @@ std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
 
 template <typename T>
 using TypeAlloc = MovePtrTypeAllocator<T>;
-
-template <typename T, typename U>
-bool operator==(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
-  return a.impl.get() == b.impl.get();
-}
-template <typename T, typename U>
-bool operator!=(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
-  return !(a == b);
-}
 
 } }
 
