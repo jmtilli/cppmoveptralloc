@@ -32,6 +32,9 @@ int main(int argc, char **argv)
   DblTraits::destroy(dblalloc, d);
   DblTraits::deallocate(dblalloc, d, 1);
 
+  d = mpa::alloc_construct_one(dblalloc, 1.5);
+  mpa::destroy_dealloc_one(dblalloc, d);
+
   d = DblTraits::allocate(dblalloc, 3);
   DblTraits::construct(dblalloc, &d[0], 2.5);
   DblTraits::construct(dblalloc, &d[1], 3.5);
@@ -40,6 +43,12 @@ int main(int argc, char **argv)
   DblTraits::destroy(dblalloc, &d[1]);
   DblTraits::destroy(dblalloc, &d[0]);
   DblTraits::deallocate(dblalloc, d, 3);
+
+  d = mpa::alloc_construct_many(dblalloc, 3, 2.75);
+  mpa::destroy_dealloc_many(dblalloc, d, 3);
+
+  if (dblalloc != dblalloc) // test comparison works
+    return 1;
 
   return 0;
 }

@@ -151,6 +151,62 @@ std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
 template <typename T>
 using TypeAlloc = MovePtrTypeAllocator<T>;
 
+template<typename T, typename... Args>
+T *alloc_construct_one(TypeAlloc<T> &alloc, Args&&... args)
+{
+  using Traits = std::allocator_traits<TypeAlloc<T> >;
+  T *res;
+  res = Traits::allocate(alloc, 1);
+  Traits::construct(alloc, res, std::forward<Args>(args)...);
+  return res;
+}
+
+template<typename T, typename... Args>
+void destroy_dealloc_one(TypeAlloc<T> &alloc, T *t)
+{
+  using Traits = std::allocator_traits<TypeAlloc<T> >;
+  Traits::destroy(alloc, t);
+  Traits::deallocate(alloc, t, 1);
+}
+
+template<typename T, typename... Args>
+T *alloc_construct_many(TypeAlloc<T> &alloc, std::size_t n, Args&&... args)
+{
+  using Traits = std::allocator_traits<TypeAlloc<T> >;
+  T *res;
+  std::size_t i;
+  res = Traits::allocate(alloc, n);
+  try
+  {
+    for (i = 0; i < n; i++)
+    {
+      Traits::construct(alloc, &res[i], std::forward<Args>(args)...);
+    }
+    return res;
+  }
+  catch (...)
+  {
+    for (; i > 0; i--)
+    {
+      Traits::destroy(alloc, &res[i-1]);
+    }
+    Traits::deallocate(alloc, res, n);
+    throw;
+  }
+}
+
+template<typename T, typename... Args>
+void destroy_dealloc_many(TypeAlloc<T> &alloc, T *t, std::size_t n)
+{
+  std::size_t i;
+  using Traits = std::allocator_traits<TypeAlloc<T> >;
+  for (i = n; i > 0; i--)
+  {
+    Traits::destroy(alloc, &t[i-1]);
+  }
+  Traits::deallocate(alloc, t, n);
+}
+
 } }
 
 #endif
