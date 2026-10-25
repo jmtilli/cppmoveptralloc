@@ -180,7 +180,7 @@ struct MovePtrTypeAllocatorDangerous {
     }
 };
 
-std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
+static inline std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
 {
     return std::make_shared<MovePtrAllocatorImpl>(arenasz, thresh);
 }
