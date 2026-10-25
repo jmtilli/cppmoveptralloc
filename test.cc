@@ -5,7 +5,8 @@ namespace mpa = jmtilli::mpa;
 
 int main(int argc, char **argv)
 {
-  auto impl = std::make_shared<mpa::MovePtrAllocatorImpl>(512*1024, 128*1024);
+  // same as std::make_shared<mpa::MovePtrAllocatorImpl>(..., ...);
+  auto impl = mpa::make_impl(512*1024, 128*1024);
   mpa::MovePtrTypeAllocator<double> dblalloc(impl);
   using DblTraits = std::allocator_traits<mpa::MovePtrTypeAllocator<double> >;
   std::vector<int, mpa::MovePtrTypeAllocator<int> > vec(impl);

@@ -134,6 +134,11 @@ struct MovePtrTypeAllocator {
     }
 };
 
+std::shared_ptr<MovePtrAllocatorImpl> make_mpa(size_t arenasz, size_t thresh)
+{
+    return std::make_shared<MovePtrAllocatorImpl>(arenasz, thresh);
+}
+
 template <typename T, typename U>
 bool operator==(const MovePtrTypeAllocator<T> &a, const MovePtrTypeAllocator<U> &b) noexcept {
   return a.impl.get() == b.impl.get();
