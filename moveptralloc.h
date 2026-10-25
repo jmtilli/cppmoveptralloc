@@ -51,12 +51,12 @@ struct MovePtrAllocatorImpl {
         return &special_arena[alloc_off];
     }
 
-  public:
     char *cur_arena;
     std::size_t arena_sz;
     std::size_t direct_alloc_threshold;
     std::size_t cur_arena_off;
 
+  public:
     MovePtrAllocatorImpl(std::size_t arena_sz, std::size_t direct_alloc_threshold): arena_sz(arena_sz), direct_alloc_threshold(direct_alloc_threshold)
     {
         char *null_arena = nullptr;
