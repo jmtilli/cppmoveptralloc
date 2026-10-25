@@ -143,6 +143,43 @@ struct MovePtrTypeAllocator {
     }
 };
 
+template <typename T>
+struct MovePtrTypeAllocatorDangerous {
+  private:
+    std::shared_ptr<MovePtrAllocatorImpl> &impl;
+  public:
+    using value_type = T;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    MovePtrTypeAllocatorDangerous(std::shared_ptr<MovePtrAllocatorImpl> &impl) noexcept: impl(impl) {}
+
+    template <typename U>
+    constexpr MovePtrTypeAllocatorDangerous(const MovePtrTypeAllocatorDangerous<U> &other) noexcept: impl(other.impl) {}
+
+    T* allocate(std::size_t n) {
+        if (n > SIZE_MAX/sizeof(T))
+        {
+            throw std::bad_alloc();
+        }
+        void *ptr = impl->alloc(n*sizeof(T), alignof(T));
+        return static_cast<T*>(ptr);
+    }
+    void deallocate(T* p, std::size_t n) noexcept {
+        // nop
+    }
+
+    template <typename U>
+    friend bool operator==(const MovePtrTypeAllocatorDangerous<T> &a, const MovePtrTypeAllocatorDangerous<U> &b) noexcept {
+        return a.impl.get() == b.impl.get();
+    }
+    template <typename U>
+    friend bool operator!=(const MovePtrTypeAllocatorDangerous<T> &a, const MovePtrTypeAllocatorDangerous<U> &b) noexcept {
+        return !(a == b);
+    }
+};
+
 std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
 {
     return std::make_shared<MovePtrAllocatorImpl>(arenasz, thresh);
@@ -150,6 +187,9 @@ std::shared_ptr<MovePtrAllocatorImpl> make_impl(size_t arenasz, size_t thresh)
 
 template <typename T>
 using TypeAlloc = MovePtrTypeAllocator<T>;
+
+template <typename T>
+using TypeAllocDanger = MovePtrTypeAllocatorDangerous<T>;
 
 template<typename T, typename... Args>
 T *alloc_construct_one(TypeAlloc<T> &alloc, Args&&... args)
@@ -162,9 +202,29 @@ T *alloc_construct_one(TypeAlloc<T> &alloc, Args&&... args)
 }
 
 template<typename T, typename... Args>
+T *alloc_construct_one(std::shared_ptr<MovePtrAllocatorImpl> &impl, Args&&... args)
+{
+  using Traits = std::allocator_traits<TypeAllocDanger<T> >;
+  TypeAllocDanger<T> alloc(impl);
+  T *res;
+  res = Traits::allocate(alloc, 1);
+  Traits::construct(alloc, res, std::forward<Args>(args)...);
+  return res;
+}
+
+template<typename T, typename... Args>
 void destroy_dealloc_one(TypeAlloc<T> &alloc, T *t)
 {
   using Traits = std::allocator_traits<TypeAlloc<T> >;
+  Traits::destroy(alloc, t);
+  Traits::deallocate(alloc, t, 1);
+}
+
+template<typename T, typename... Args>
+void destroy_dealloc_one(std::shared_ptr<MovePtrAllocatorImpl> &impl, T *t)
+{
+  using Traits = std::allocator_traits<TypeAllocDanger<T> >;
+  TypeAllocDanger<T> alloc(impl);
   Traits::destroy(alloc, t);
   Traits::deallocate(alloc, t, 1);
 }
@@ -196,10 +256,50 @@ T *alloc_construct_many(TypeAlloc<T> &alloc, std::size_t n, Args&&... args)
 }
 
 template<typename T, typename... Args>
+T *alloc_construct_many(std::shared_ptr<MovePtrAllocatorImpl> &impl, std::size_t n, Args&&... args)
+{
+  using Traits = std::allocator_traits<TypeAllocDanger<T> >;
+  TypeAllocDanger<T> alloc(impl);
+  T *res;
+  std::size_t i;
+  res = Traits::allocate(alloc, n);
+  try
+  {
+    for (i = 0; i < n; i++)
+    {
+      Traits::construct(alloc, &res[i], std::forward<Args>(args)...);
+    }
+    return res;
+  }
+  catch (...)
+  {
+    for (; i > 0; i--)
+    {
+      Traits::destroy(alloc, &res[i-1]);
+    }
+    Traits::deallocate(alloc, res, n);
+    throw;
+  }
+}
+
+template<typename T, typename... Args>
 void destroy_dealloc_many(TypeAlloc<T> &alloc, T *t, std::size_t n)
 {
   std::size_t i;
   using Traits = std::allocator_traits<TypeAlloc<T> >;
+  for (i = n; i > 0; i--)
+  {
+    Traits::destroy(alloc, &t[i-1]);
+  }
+  Traits::deallocate(alloc, t, n);
+}
+
+template<typename T, typename... Args>
+void destroy_dealloc_many(std::shared_ptr<MovePtrAllocatorImpl> &impl, T *t, std::size_t n)
+{
+  std::size_t i;
+  TypeAllocDanger<T> alloc(impl);
+  using Traits = std::allocator_traits<TypeAllocDanger<T> >;
   for (i = n; i > 0; i--)
   {
     Traits::destroy(alloc, &t[i-1]);
